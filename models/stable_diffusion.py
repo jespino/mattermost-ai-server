@@ -10,7 +10,26 @@ class StableDiffusion():
     def query(self, text):
         return self.model(text).images[0]
 
+
 if __name__ == '__main__':
-    stableDiffusion = StableDiffusion()
-    image = stableDiffusion.query("an astronaut riding a horse in the moon")
-    image.save("output.png")
+    import threading
+
+    def run(device, output, query) :
+        stableDiffusion = StableDiffusion(device)
+        image = stableDiffusion.query(query)
+        image.save(output)
+
+    t1 = threading.Thread(target=run, args=('cuda:0', "output0.png", "an astronaut riding a horse in the moon"))
+    t1.start()
+    t2 = threading.Thread(target=run, args=('cuda:1', "output1.png", "an astronaut riding a horse in the moon"))
+    t2.start()
+    t3 = threading.Thread(target=run, args=('cuda:2', "output2.png", "an astronaut riding a horse in the moon"))
+    t3.start()
+    t4 = threading.Thread(target=run, args=('cuda:3', "output3.png", "an astronaut riding a horse in the moon"))
+    t4.start()
+
+    t1.join()
+    t2.join()
+    t3.join()
+    t4.join()
+
