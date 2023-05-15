@@ -10,7 +10,7 @@ from io import BytesIO
 class Models:
     def __init__(self):
         self.imageGenerator = StableDiffusion("cpu")
-        # self.textGenerator = GptNeoxChatBase20B()
+        self.textGenerator = GptNeoxChatBase20B()
         # self.textGenerator = Gpt4AllJ()
         self.emojiSelector = TwitterRobertaBaseEmoji()
 
