@@ -1,0 +1,8 @@
+[gpt]
+model_class="models.fake_gpt.FakeGPT"
+
+[image]
+model_class="models.fake_image.FakeImage"
+
+[emoji]
+model_class="models.fake_emoji.FakeEmoji"
