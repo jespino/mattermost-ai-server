@@ -27,7 +27,7 @@ class TwitterRobertaBaseEmoji():
             "wink",
             "100",
             "grin",
-            "christmas_tree"
+            "christmas_tree",
             "camera_with_flash",
             "stuck_out_tongue_winking_eye",
         ]

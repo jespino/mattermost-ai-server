@@ -2,12 +2,6 @@ import json
 import importlib
 import toml
 
-# from models.stable_diffusion import StableDiffusion
-# from models.gpt_neoxt_chat_base_20b import GptNeoxChatBase20B
-# from models.gpt4allj import Gpt4AllJ
-# from models.twitter_roberta_base_emoji import TwitterRobertaBaseEmoji
-# from models.fake_gpt import FakeGPT
-
 from bottle import post, route, run, template, request
 from io import BytesIO
 
