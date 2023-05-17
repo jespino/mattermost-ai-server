@@ -2,7 +2,9 @@ import json
 import importlib
 import toml
 
-from bottle import post, route, run, template, request
+from bottle import post, get, route, run, template, request
+from bottle.ext.websocket import GeventWebSocketServer
+from bottle.ext.websocket import websocket
 from io import BytesIO
 
 def import_model(name):
@@ -24,7 +26,7 @@ class Models:
 models = Models()
 
 @post('/botQuery')
-def index():
+def botQuery():
     data = request.json
     bot_description = data['bot_description']
     prompt = data['prompt']
@@ -33,6 +35,20 @@ def index():
         return "prompt not found"
     answer = models.textGenerator.query(bot_description, prompt)
     return json.dumps({"response": " ".join(answer)})
+
+@get('/botQueryStream', apply=[websocket])
+def botQueryStream(ws):
+    data = json.loads(ws.receive())
+    bot_description = data['bot_description']
+    prompt = data['prompt']
+    if prompt == "":
+        response.status = 400
+        return "prompt not found"
+    response = ""
+    for word in models.textGenerator.query(bot_description, prompt):
+        ws.send(word)
+    ws.close()
+    return
 
 @post('/generateImage')
 def generateImage():
@@ -56,5 +72,5 @@ def generateImage():
     emoji = models.emojiSelector.query(prompt)
     return json.dumps({"response": emoji})
 
-run(host='localhost', port=8090)
+run(host='localhost', port=8090, server=GeventWebSocketServer)
 
