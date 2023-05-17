@@ -7,6 +7,8 @@ from bottle.ext.websocket import GeventWebSocketServer
 from bottle.ext.websocket import websocket
 from io import BytesIO
 
+config = toml.load("config.toml")
+
 def import_model(name):
     components = name.split(".")
     module = importlib.import_module(".".join(components[0:-1]))
@@ -14,7 +16,6 @@ def import_model(name):
 
 class Models:
     def __init__(self):
-        config = toml.load("config.toml")
         GPTClass = import_model(config["gpt"]["model_class"])
         ImageClass = import_model(config["image"]["model_class"])
         EmojiClass = import_model(config["emoji"]["model_class"])
@@ -72,5 +73,4 @@ def generateImage():
     emoji = models.emojiSelector.query(prompt)
     return json.dumps({"response": emoji})
 
-run(host='localhost', port=8090, server=GeventWebSocketServer)
-
+run(host=config.get("host", "localhost"), port=config.get("port", 8090), server=GeventWebSocketServer)
