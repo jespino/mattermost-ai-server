@@ -48,6 +48,7 @@ def botQueryStream(ws):
     response = ""
     for word in models.textGenerator.query(bot_description, prompt):
         ws.send(word)
+    ws.send('')
     ws.close()
     return
 
