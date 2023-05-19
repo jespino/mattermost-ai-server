@@ -7,8 +7,14 @@ class GptNeoxChatBase20B:
         self.tokenizer = AutoTokenizer.from_pretrained("togethercomputer/GPT-NeoXT-Chat-Base-20B")
         self.model = AutoModelForCausalLM.from_pretrained("togethercomputer/GPT-NeoXT-Chat-Base-20B", device_map="auto", load_in_8bit=True)
 
-    def query(self, bot_description, text):
+    def query(self, bot_description, messages):
         original_query = "<human>: {}\n<bot>: ok\n<human>: {}\n<bot>: ".format(bot_description, text)
+        for message in messages:
+            if message["role"] == "user":
+                original_query += "<human>: "+message["content"]
+            if message["role"] == "system" or message["role"] == "assistant":
+                original_query += "<bot>: "+message["content"]
+
         current_query = original_query
         output_str = ""
         new_tokens = ""

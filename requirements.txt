@@ -25,6 +25,7 @@ fsspec==2023.4.0
 ftfy==6.1.1
 gevent==22.10.2
 gevent-websocket==0.10.1
+gpt4all==0.2.3
 greenlet==2.0.2
 hjson==3.1.0
 huggingface-hub==0.14.1

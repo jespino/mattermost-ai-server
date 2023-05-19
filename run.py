@@ -30,23 +30,23 @@ models = Models()
 def botQuery():
     data = request.json
     bot_description = data['bot_description']
-    prompt = data['prompt']
-    if prompt == "":
+    messages = data['messages']
+    if len(messages) == 0:
         response.status = 400
-        return "prompt not found"
-    answer = models.textGenerator.query(bot_description, prompt)
+        return "invalid request"
+    answer = models.textGenerator.query(bot_description, messages)
     return json.dumps({"response": " ".join(answer)})
 
 @get('/botQueryStream', apply=[websocket])
 def botQueryStream(ws):
     data = json.loads(ws.receive())
     bot_description = data['bot_description']
-    prompt = data['prompt']
-    if prompt == "":
+    messages = data['messages']
+    if len(messages) == 0:
         response.status = 400
-        return "prompt not found"
+        return "invalid request"
     response = ""
-    for word in models.textGenerator.query(bot_description, prompt):
+    for word in models.textGenerator.query(bot_description, messages):
         ws.send(word)
     ws.send('')
     ws.close()
