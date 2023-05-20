@@ -8,27 +8,32 @@ class GptNeoxChatBase20B:
         self.model = AutoModelForCausalLM.from_pretrained("togethercomputer/GPT-NeoXT-Chat-Base-20B", device_map="auto", load_in_8bit=True)
 
     def query(self, bot_description, messages):
-        original_query = "<human>: {}\n<bot>: ok\n<human>: {}\n<bot>: ".format(bot_description, text)
+        original_query = "<human>: {}\n<bot>: ok\n".format(bot_description)
         for message in messages:
             if message["role"] == "user":
-                original_query += "<human>: "+message["content"]
+                original_query += "<human>: {}\n".format(message["content"])
             if message["role"] == "system" or message["role"] == "assistant":
-                original_query += "<bot>: "+message["content"]
+                original_query += "<bot>: {}\n".format(message["content"])
+        original_query += "<bot>: "
 
         current_query = original_query
         output_str = ""
-        new_tokens = ""
+        buffer = ""
         while True:
-            if new_tokens != "":
-                yield new_tokens
             inputs = self.tokenizer(current_query, return_tensors='pt').to(self.model.device)
             outputs = self.model.generate(**inputs, max_new_tokens=5, do_sample=True, temperature=0.8)
             output_str = self.tokenizer.decode(outputs[0])
-            new_tokens = output_str[len(current_query):]
+            buffer += output_str[len(current_query):]
             current_query = output_str
-            if "<human>:" in current_query[len(original_query):]:
-                yield new_tokens[:new_tokens.find("<human>:")]
+
+            if "<human>:" in buffer:
+                yield buffer[:buffer.find("<human>:")]
                 break
+
+            if len(buffer) > 20:
+                yield buffer[0:-10]
+                buffer = buffer[-10:]
+
 
 if __name__ == '__main__':
     gpt = GptNeoxChatBase20B()
@@ -41,3 +46,4 @@ if __name__ == '__main__':
         print("")
 
         query = input("> ")
+
