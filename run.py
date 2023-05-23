@@ -2,9 +2,11 @@ import json
 import importlib
 import toml
 
-from bottle import post, get, route, run, template, request
-from bottle.ext.websocket import GeventWebSocketServer
-from bottle.ext.websocket import websocket
+from gevent import monkey; monkey.patch_all()
+from gevent import sleep
+
+from bottle import post, get, route, run, template, request, response
+from bottle import GeventServer
 from io import BytesIO
 
 config = toml.load("config.toml")
@@ -26,34 +28,30 @@ class Models:
 
 models = Models()
 
-@post('/botQuery')
-def botQuery():
+@post('/v1/chat/completions')
+def chat_completions():
     data = request.json
-    bot_description = data['bot_description']
     messages = data['messages']
     if len(messages) == 0:
         response.status = 400
         return "invalid request"
-    answer = models.textGenerator.query(bot_description, messages)
-    return json.dumps({"response": " ".join(answer)})
 
-@get('/botQueryStream', apply=[websocket])
-def botQueryStream(ws):
-    data = json.loads(ws.receive())
-    bot_description = data['bot_description']
-    messages = data['messages']
-    if len(messages) == 0:
-        response.status = 400
-        return "invalid request"
-    response = ""
-    for word in models.textGenerator.query(bot_description, messages):
-        ws.send(word)
-    ws.send('')
-    ws.close()
-    return
+    yield 'retry: 100\n\n'
+
+    if data['stream']:
+        response.content_type  = 'text/event-stream'
+        response.cache_control = 'no-cache'
+        response.connection = 'keep-alive'
+        response.transfer_encoding = 'chunked'
+        for result in models.textGenerator.query(messages):
+            yield 'data: {}\n\n'.format(json.dumps(result))
+        yield 'data: {}\n\n'.format(json.dumps({"model": data["model"], "choices": [{"finish_reason": "stop"}]}))
+        yield 'data: [DONE]\n\n'
+    else:
+        return "".join(models.textGenerator.query(messages))
 
 @post('/generateImage')
-def generateImage():
+def generate_image():
     data = request.json
     prompt = data['prompt'] or ""
     if prompt == "":
@@ -65,7 +63,7 @@ def generateImage():
     return membuf.getvalue()
 
 @post('/selectEmoji')
-def generateImage():
+def generate_emoji():
     data = request.json
     prompt = data['prompt'] or ""
     if prompt == "":
@@ -74,4 +72,4 @@ def generateImage():
     emoji = models.emojiSelector.query(prompt)
     return json.dumps({"response": emoji})
 
-run(host=config.get("host", "localhost"), port=config.get("port", 8090), server=GeventWebSocketServer)
+run(host=config.get("host", "localhost"), port=config.get("port", 8090), server=GeventServer)
