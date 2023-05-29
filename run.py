@@ -1,6 +1,7 @@
 import json
 import importlib
 import toml
+import base64
 
 from gevent import monkey; monkey.patch_all()
 from gevent import sleep
@@ -50,26 +51,35 @@ def chat_completions():
     else:
         return "".join(models.textGenerator.query(messages))
 
-@post('/generateImage')
+@post('/images/generations')
 def generate_image():
     data = request.json
     prompt = data['prompt'] or ""
     if prompt == "":
         response.status = 400
         return "prompt not found"
-    image = models.imageGenerator.query(prompt)
-    membuf = BytesIO()
-    image.save(membuf, format="png")
-    return membuf.getvalue()
-
-@post('/selectEmoji')
-def generate_emoji():
-    data = request.json
-    prompt = data['prompt'] or ""
-    if prompt == "":
+    width = 0
+    height = 0
+    if data["size"] == "256x256":
+        width = 256
+        height = 256
+    elif data["size"] == "512x512":
+        width = 512
+        height = 512
+    elif data["size"] == "1024x1024":
+        width = 1024
+        height = 1024
+    else:
         response.status = 400
-        return "prompt not found"
-    emoji = models.emojiSelector.query(prompt)
-    return json.dumps({"response": emoji})
+        return "invalid size"
+    response = {"data": []}
+
+    for idx in range(data["n"]):
+        image = models.imageGenerator.query(prompt, width, height)
+        membuf = BytesIO()
+        image.save(membuf, format="png")
+        response["data"].append({"b64_json": base64.b64encode(membuf.getvalue()).decode('ascii')})
+
+    return response
 
 run(host=config.get("host", "localhost"), port=config.get("port", 8090), server=GeventServer)

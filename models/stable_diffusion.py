@@ -7,7 +7,7 @@ class StableDiffusion():
         self.scheduler = EulerDiscreteScheduler.from_pretrained(self.model_id, subfolder="scheduler")
         self.model = StableDiffusionPipeline.from_pretrained(self.model_id, scheduler=self.scheduler).to(self.device)
 
-    def query(self, text):
+    def query(self, text, width, height):
         return self.model(text).images[0]
 
 
