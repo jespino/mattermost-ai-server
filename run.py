@@ -29,6 +29,11 @@ models = Models()
 
 @post('/chat/completions')
 def chat_completions():
+    secret = config.get("secret", "")
+    if secret != "" and request.headers["Authorization"] != 'Bearer {}'.format(secret):
+        response.status = 403
+        return 'permission denied'
+
     data = request.json
     messages = data['messages']
     if len(messages) == 0:
@@ -60,6 +65,11 @@ def chat_completions():
 
 @post('/images/generations')
 def generate_image():
+    secret = config.get("secret", "")
+    if secret != "" and request.headers["Authorization"] != 'Bearer {}'.format(secret):
+        response.status = 403
+        return 'permission denied'
+
     data = request.json
     prompt = data['prompt'] or ""
     if prompt == "":

@@ -1,5 +1,6 @@
 host="localhost"
 port=8090
+secret=""
 
 [gpt]
 model_class="models.fake_gpt.FakeGPT"

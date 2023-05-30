@@ -2,11 +2,16 @@ import time
 import sys
 
 class FakeGPT:
-    def query(self, bot_description, text):
+    def query(self, text):
         fakeText = "This is a fake reply, this is not a real text model"
         for token in fakeText.split():
             time.sleep(0.1)
-            yield token
+            yield {
+                'model': "ggml-mpt-7b-chat",
+                'choices': [
+                    {"delta": {"content": token + " "}},
+                ],
+            }
 
 if __name__ == '__main__':
     gpt = FakeGPT()
