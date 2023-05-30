@@ -27,7 +27,7 @@ class GptNeoxChatBase20B:
         query = ""
         for message in messages:
             if message["role"] == "system":
-                query = "**{}**\n".format(message["content"].replace("\n", " "))
+                query += "**{}**\n".format(message["content"].replace("\n", " "))
 
         for message in messages:
             if message["role"] == "assistant":
