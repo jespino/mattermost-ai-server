@@ -21,11 +21,9 @@ class Models:
     def __init__(self):
         GPTClass = import_model(config["gpt"]["model_class"])
         ImageClass = import_model(config["image"]["model_class"])
-        EmojiClass = import_model(config["emoji"]["model_class"])
 
         self.imageGenerator = ImageClass(*config["image"].get("params", []))
         self.textGenerator = GPTClass(*config["gpt"].get("params", []))
-        self.emojiSelector = EmojiClass(*config["emoji"].get("params", []))
 
 models = Models()
 
