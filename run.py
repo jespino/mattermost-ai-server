@@ -37,7 +37,7 @@ def chat_completions():
 
     yield 'retry: 100\n\n'
 
-    if data['stream']:
+    if 'stream' in data and data['stream']:
         response.content_type  = 'text/event-stream'
         response.cache_control = 'no-cache'
         response.connection = 'keep-alive'
@@ -47,7 +47,16 @@ def chat_completions():
         yield 'data: {}\n\n'.format(json.dumps({"model": data["model"], "choices": [{"finish_reason": "stop"}]}))
         yield 'data: [DONE]\n\n'
     else:
-        return "".join(models.textGenerator.query(messages))
+        text = ""
+        for result in models.textGenerator.query(messages):
+            text += result['choices'][0]['delta']['content']
+
+        responseBody = {
+            'choices': [
+                {'message': {'content': text}},
+            ]
+        }
+        return responseBody
 
 @post('/images/generations')
 def generate_image():

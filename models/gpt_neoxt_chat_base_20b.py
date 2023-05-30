@@ -1,7 +1,7 @@
 import torch
 import sys
 from transformers import StoppingCriteria, StoppingCriteriaList, AutoTokenizer, AutoModelForCausalLM, TextIteratorStreamer
-from threading import Thread
+from gevent import threading
 
 
 class StopStringsCriteria(StoppingCriteria):
@@ -24,27 +24,26 @@ class GptNeoxChatBase20B:
         self.model = AutoModelForCausalLM.from_pretrained("togethercomputer/GPT-NeoXT-Chat-Base-20B", device_map="auto", load_in_8bit=True)
 
     def query(self, messages):
+        query = ""
         for message in messages:
             if message["role"] == "system":
-                query = "<human>: {}\n<bot>: ok\n".format(message["content"])
-            elif message["role"] == "assistant":
+                query = "**{}**\n".format(message["content"].replace("\n", " "))
+
+        for message in messages:
+            if message["role"] == "assistant":
                 query += "<bot>: {}\n".format(message["content"])
             elif message["role"] == "user":
                 query += "<human>: {}\n".format(message["content"])
         query += "<bot>: "
 
-        streamer = TextIteratorStreamer(self.tokenizer)
+        streamer = TextIteratorStreamer(self.tokenizer, True)
 
         inputs = self.tokenizer(query, return_tensors='pt').to(self.model.device)
         generation_kwargs = dict(**inputs, max_new_tokens=1000, do_sample=True, temperature=0.8, stopping_criteria=StoppingCriteriaList([self.stopping_criteria]), streamer=streamer)
-        thread = Thread(target=self.model.generate, kwargs=generation_kwargs)
+        thread = threading.Thread(target=self.model.generate, kwargs=generation_kwargs)
         thread.start()
 
-        first = True
         for new_text in streamer:
-            if first:
-                first = False
-                continue
             if new_text in self.stop_texts:
                 break
 
