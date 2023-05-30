@@ -27,7 +27,7 @@ class Models:
 
 models = Models()
 
-@post('/v1/chat/completions')
+@post('/chat/completions')
 def chat_completions():
     data = request.json
     messages = data['messages']

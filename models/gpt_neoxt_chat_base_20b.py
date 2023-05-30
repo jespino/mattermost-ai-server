@@ -40,7 +40,11 @@ class GptNeoxChatBase20B:
         thread = Thread(target=self.model.generate, kwargs=generation_kwargs)
         thread.start()
 
+        first = True
         for new_text in streamer:
+            if first:
+                first = False
+                continue
             if new_text in self.stop_texts:
                 break
 
