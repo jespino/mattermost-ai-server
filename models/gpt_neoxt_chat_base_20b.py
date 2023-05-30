@@ -1,47 +1,53 @@
 import torch
 import sys
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import StoppingCriteria, StoppingCriteriaList, AutoTokenizer, AutoModelForCausalLM, TextIteratorStreamer
+from threading import Thread
 
+
+class StopStringsCriteria(StoppingCriteria):
+    def __init__(self, tokenizer, stop_strings):
+        self.stop_strings = stop_strings
+        self.tokenizer = tokenizer
+
+    def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
+        for stop_string in self.stop_strings:
+            input_string = self.tokenizer.decode(input_ids[0])
+            if input_string.endswith(stop_string):
+                return True
+        return False
 
 class GptNeoxChatBase20B:
     def __init__(self):
         self.tokenizer = AutoTokenizer.from_pretrained("togethercomputer/GPT-NeoXT-Chat-Base-20B")
-        model = AutoModelForCausalLM.from_pretrained("togethercomputer/GPT-NeoXT-Chat-Base-20B", device_map="auto", load_in_8bit=True)
-        stop_texts = ["<human>:", "<bot>:"]
-        stop_sequencer = StopSequencer(
-            model,
-            model_type="causal",
-            tokenizer=self.tokenizer,
-        )
-        self.model = stop_sequencer.register_stop_texts(
-            stop_texts=stop_texts,
-            input_length=tokens.size(-1),
-        )
+        self.stop_texts = ["<human>:", "<bot>:"]
+        self.stopping_criteria = StopStringsCriteria(self.tokenizer, self.stop_texts)
+        self.model = AutoModelForCausalLM.from_pretrained("togethercomputer/GPT-NeoXT-Chat-Base-20B", device_map="auto", load_in_8bit=True)
 
     def query(self, messages):
         for message in messages:
             if message["role"] == "system":
-                original_query = "<human>: {}\n<bot>: ok\n".format(message["content"])
+                query = "<human>: {}\n<bot>: ok\n".format(message["content"])
             elif message["role"] == "assistant":
-                original_query += "<bot>: {}\n".format(message["content"])
+                query += "<bot>: {}\n".format(message["content"])
             elif message["role"] == "user":
-                original_query += "<human>: {}\n".format(message["content"])
-        original_query += "<bot>: "
+                query += "<human>: {}\n".format(message["content"])
+        query += "<bot>: "
 
-        current_query = original_query
-        output_str = ""
-        buffer = ""
-        while True:
-            inputs = self.tokenizer(current_query, return_tensors='pt').to(self.model.device)
-            outputs = self.model.generate(**inputs, max_new_tokens=5, do_sample=True, temperature=0.8)
-            output_str = self.tokenizer.decode(outputs[0])
-            output = output_str[len(current_query):]
-            current_query = output_str
+        streamer = TextIteratorStreamer(self.tokenizer)
+
+        inputs = self.tokenizer(query, return_tensors='pt').to(self.model.device)
+        generation_kwargs = dict(**inputs, max_new_tokens=1000, do_sample=True, temperature=0.8, stopping_criteria=StoppingCriteriaList([self.stopping_criteria]), streamer=streamer)
+        thread = Thread(target=self.model.generate, kwargs=generation_kwargs)
+        thread.start()
+
+        for new_text in streamer:
+            if new_text in self.stop_texts:
+                break
 
             yield {
                 'model': 'GPT-NeoXT-Chat-Base-20B',
                 'choices': [
-                    {'message': {'role': 'assistant', 'content': "output"}}
+                    {'message': {'role': 'assistant', 'content': new_text}, 'delta': {'content': new_text}}
                 ]
             }
 
@@ -50,10 +56,9 @@ if __name__ == '__main__':
     query = input("> ")
     while query != "quit":
         print("bot> ", end="")
-        for token in gpt.query([{"role": "system", "content": "You are a helpful assistant."}, {"role": "user", "content": query}]):
-            print(token, end="")
+        for response in gpt.query([{"role": "system", "content": "You are a helpful assistant."}, {"role": "user", "content": query}]):
+            print(response['choices'][0]['delta']['content'], end="")
             sys.stdout.flush()
         print("")
 
         query = input("> ")
-
