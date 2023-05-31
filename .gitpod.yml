@@ -1,0 +1,9 @@
+tasks:
+  - name: mattermost-ai-server
+    init: pip install -r requirements.txt; cp config.example.toml config.toml
+    command: python run.py
+
+ports:
+  - name: mattermost-ai-server
+    port: 8090
+    onOpen: ignore
