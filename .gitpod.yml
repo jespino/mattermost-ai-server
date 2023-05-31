@@ -3,7 +3,7 @@ image:
 
 tasks:
   - name: mattermost-ai-server
-    init: pip install -r requirements.txt; cp config.example.toml config.toml
+    init: pip install -r requirements.txt; cp config.example.toml config.toml; sed -i 's/localhost/0.0.0.0/' config.toml; sed -i 's/models.fake_gpt.FakeGPT/models.mpt7bchat.Mpt7bChat/' config.toml
     command: python run.py
 
 ports:
