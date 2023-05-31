@@ -10,3 +10,4 @@ ports:
   - name: mattermost-ai-server
     port: 8090
     onOpen: ignore
+    visibility: public
