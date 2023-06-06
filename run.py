@@ -1,77 +1,80 @@
+''' Mattermost AI Server entry point'''
+import base64
 import json
 import importlib
-import toml
-import base64
-
-from gevent import monkey; monkey.patch_all()
-from gevent import sleep
-
-from bottle import post, get, route, run, template, request, response
-from bottle import GeventServer
 from io import BytesIO
+import toml
+from gevent import monkey
+from bottle import post, run, request, response
+from bottle import GeventServer
+
+monkey.patch_all()
 
 config = toml.load("config.toml")
 
-def import_model(name):
+
+def __import_model(name):
     components = name.split(".")
     module = importlib.import_module(".".join(components[0:-1]))
-    return  getattr(module, components[-1])
+    return getattr(module, components[-1])
 
-class Models:
-    def __init__(self):
-        GPTClass = import_model(config["gpt"]["model_class"])
-        ImageClass = import_model(config["image"]["model_class"])
+gpt_class = __import_model(config["gpt"]["model_class"])
+image_class = __import_model(config["image"]["model_class"])
 
-        self.imageGenerator = ImageClass(*config["image"].get("params", []))
-        self.textGenerator = GPTClass(*config["gpt"].get("params", []))
+image_generator = image_class(*config["image"].get("params", []))
+text_generator = gpt_class(*config["gpt"].get("params", []))
 
-models = Models()
 
-@post('/chat/completions')
+@post("/chat/completions")
 def chat_completions():
+    '''API endpoint for text generation'''
     secret = config.get("secret", "")
-    if secret != "" and request.headers["Authorization"] != 'Bearer {}'.format(secret):
+    if secret != "" and request.headers["Authorization"] != f"Bearer {secret}":
         response.status = 403
-        return 'permission denied'
+        return "permission denied"
 
     data = request.json
-    messages = data['messages']
+    messages = data["messages"]
     if len(messages) == 0:
         response.status = 400
         return "invalid request"
 
-    yield 'retry: 100\n\n'
+    yield "retry: 100\n\n"
 
-    if 'stream' in data and data['stream']:
-        response.content_type  = 'text/event-stream'
-        response.cache_control = 'no-cache'
-        response.connection = 'keep-alive'
-        response.transfer_encoding = 'chunked'
-        for result in models.textGenerator.query(messages):
-            yield 'data: {}\n\n'.format(json.dumps(result))
-        yield 'data: {}\n\n'.format(json.dumps({"model": data["model"], "choices": [{"finish_reason": "stop"}]}))
-        yield 'data: [DONE]\n\n'
+    if "stream" in data and data["stream"]:
+        response.content_type = "text/event-stream"
+        response.cache_control = "no-cache"
+        response.connection = "keep-alive"
+        response.transfer_encoding = "chunked"
+        for result in text_generator.query(messages):
+            yield f"data: {json.dumps(result)}\n\n"
+        last_message = json.dumps({"model": data["model"], "choices": [{"finish_reason": "stop"}]})
+        yield f'data: {last_message}\n\n'
+        yield "data: [DONE]\n\n"
     else:
         text = ""
-        for result in models.textGenerator.query(messages):
-            text += result['choices'][0]['delta']['content']
+        for result in text_generator.query(messages):
+            text += result["choices"][0]["delta"]["content"]
 
-        responseBody = {
-            'choices': [
-                {'message': {'content': text}},
+        response_body = {
+            "choices": [
+                {"message": {"content": text}},
             ]
         }
-        return responseBody
+        return response_body
+    return ""
 
-@post('/images/generations')
+
+@post("/images/generations")
 def generate_image():
+    '''API image generation'''
     secret = config.get("secret", "")
-    if secret != "" and request.headers["Authorization"] != 'Bearer {}'.format(secret):
+    if secret != "" and request.headers["Authorization"] != f"Bearer {secret}":
         response.status = 403
-        return 'permission denied'
+        return "permission denied"
 
     data = request.json
-    prompt = data['prompt'] or ""
+    prompt = data["prompt"] or ""
     if prompt == "":
         response.status = 400
         return "prompt not found"
@@ -89,14 +92,21 @@ def generate_image():
     else:
         response.status = 400
         return "invalid size"
-    response = {"data": []}
+    response_body = {"data": []}
 
-    for idx in range(data["n"]):
-        image = models.imageGenerator.query(prompt, width, height)
+    for _ in range(data["n"]):
+        image = image_generator.query(prompt, width, height)
         membuf = BytesIO()
         image.save(membuf, format="png")
-        response["data"].append({"b64_json": base64.b64encode(membuf.getvalue()).decode('ascii')})
+        response_body["data"].append(
+            {"b64_json": base64.b64encode(membuf.getvalue()).decode("ascii")}
+        )
 
-    return response
+    return response_body
 
-run(host=config.get("host", "localhost"), port=config.get("port", 8090), server=GeventServer)
+
+run(
+    host=config.get("host", "localhost"),
+    port=config.get("port", 8090),
+    server=GeventServer,
+)
