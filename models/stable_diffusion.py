@@ -1,7 +1,9 @@
+'''Stable diffusion image generator implementation'''
 from diffusers import StableDiffusionPipeline, EulerDiscreteScheduler
 
 
 class StableDiffusion:
+    '''Stable diffusion image generator class implementation'''
     def __init__(self, device="cpu"):
         self.model_id = "stabilityai/stable-diffusion-2"
         self.device = device
@@ -20,8 +22,9 @@ if __name__ == "__main__":
     import threading
 
     def run(device, output, query):
-        stableDiffusion = StableDiffusion(device)
-        image = stableDiffusion.query(query)
+        '''Run one stable diffusion image generation'''
+        stable_diffusion = StableDiffusion(device)
+        image = stable_diffusion.query(query, 512, 512)
         image.save(output)
 
     t1 = threading.Thread(
