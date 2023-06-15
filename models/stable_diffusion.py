@@ -4,8 +4,8 @@ from diffusers import StableDiffusionPipeline, EulerDiscreteScheduler
 
 class StableDiffusion:
     '''Stable diffusion image generator class implementation'''
-    def __init__(self, device="cpu"):
-        self.model_id = "stabilityai/stable-diffusion-2"
+    def __init__(self, device="cpu", model="stabilityai/stable-diffusion-2"):
+        self.model_id = model
         self.device = device
         self.scheduler = EulerDiscreteScheduler.from_pretrained(
             self.model_id, subfolder="scheduler"
